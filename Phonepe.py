@@ -2,23 +2,34 @@ import json
 from os import walk
 from pathlib import Path
 import streamlit as st
+from streamlit_option_menu import option_menu
 import os
 import pandas as pd
 import mysql.connector
 import pymysql
 import numpy as np
 import matplotlib.pyplot as plt
-from PIL import Image
-# from streamlit_option_menu import option_menu
+from streamlit_option_menu import option_menu
 import plotly.express as px
 import plotly.graph_objects as go
 import PIL
+from PIL import Image
 import git
+
 myconnection=pymysql.connect(host="localhost",user="root",password="Password@1234",database='Phonepepulse')
 mycur=myconnection.cursor()
 path='pulse/data/aggregated/transaction/country/india/state/'
 # path = r'C:\Users\prett\pulse\data\aggregated\transaction\country\india\state'
 Agg_state_list=os.listdir(path)
+import requests
+def geo_state_list():
+    url = "https://gist.githubusercontent.com/jbrobst/56c13bbbf9d97d187fea01ca62ea5112/raw/e388c4cae20aa53cb5090210a42ebb9b765c0a36/india_states.geojson"
+    response = requests.get(url)
+    data = json.loads(response.content)
+    geo_state = [i['properties']['ST_NM'] for i in data['features']]
+    geo_state.sort(reverse=False)
+    return geo_state
+custom_state_list=geo_state_list()
 def Aggregate_Trans():   
     path='pulse/data/aggregated/transaction/country/india/state/'
     Agg_state_list=os.listdir(path)
@@ -47,6 +58,7 @@ def Aggregate_Trans():
                 except:
                     pass
     Agg_Trans=pd.DataFrame(Agg_trans_data)
+    Agg_Trans['State'] = Agg_Trans['State'].replace(dict(zip(Agg_state_list, custom_state_list)))
     return Agg_Trans
 path2='pulse/data/aggregated/user/country/india/state/'
 Agg_user_list=os.listdir(path2)
@@ -79,6 +91,7 @@ def Aggregate_User():
                     pass
 
     Agg_User=pd.DataFrame(Agg_user_data)
+    Agg_User['State'] = Agg_User['State'].replace(dict(zip(Agg_state_list, custom_state_list)))
     return Agg_User
 path3='pulse/data/map/transaction/hover/country/india/state/'
 Map_Trans_list=os.listdir(path3)
@@ -112,6 +125,7 @@ def Map_Trans():
                     pass
 
     M_Trans=pd.DataFrame(Map_Trans_data)
+    M_Trans['State'] = M_Trans['State'].replace(dict(zip(Agg_state_list, custom_state_list)))
     return M_Trans
 path4='pulse/data/map/user/hover/country/india/state/'
 Map_User_list=os.listdir(path4)
@@ -146,6 +160,7 @@ def Map_User():
                     pass
 
     M_User=pd.DataFrame(Map_User_data)
+    M_User['State'] = M_User['State'].replace(dict(zip(Agg_state_list, custom_state_list)))
     return M_User
 path5='pulse/data/top/transaction/country/india/state/'
 Top_Trans_list=os.listdir(path5)
@@ -153,7 +168,7 @@ def Top_Trans():
     path5='pulse/data/top/transaction/country/india/state/'
     Top_Trans_list=os.listdir(path5)
     Top_Trans_data = {'State': [], 'Year': [], 'Quarter': [], 'District': [],
-                'Transaction_count': [], 'Transaction_amount': []}
+                'Transaction_count': [], 'Transaction_amount': [], 'Pin_Codes':[]}
     for i in Top_Trans_list:
         p_i=path5+i+"/"
         Agg_yr=os.listdir(p_i)
@@ -166,25 +181,29 @@ def Top_Trans():
                 D5=json.load(Data)
                 try:
                     for z in D5['data']['districts']:
+                        for z1 in D5['data']['pincodes']:
                             district = z['entityName']
                             count = z['metric']['count']
                             amount = z['metric']['amount']
+                            Pincode=z1['entityName']
                             Top_Trans_data['State'].append(i)
                             Top_Trans_data['Year'].append(j)
                             Top_Trans_data['Quarter'].append('Q'+str(k[0]))
                             Top_Trans_data['District'].append(district)
                             Top_Trans_data['Transaction_count'].append(count)
                             Top_Trans_data['Transaction_amount'].append(amount)
+                            Top_Trans_data['Pin_Codes'].append(Pincode)
                 except:
                     pass
         T_Trans=pd.DataFrame(Top_Trans_data)
+        T_Trans['State'] = T_Trans['State'].replace(dict(zip(Agg_state_list, custom_state_list)))
         return T_Trans
 path6='pulse/data/top/user/country/india/state/'
 Top_user_list=os.listdir(path6)
 def Top_User():   
     path6='pulse/data/top/user/country/india/state/'
     Top_user_list=os.listdir(path6)
-    Top_user_data = {'State': [], 'Year': [], 'Quarter': [], 'District': [], 'Registered_User': []}
+    Top_user_data = {'State': [], 'Year': [], 'Quarter': [], 'District': [], 'Registered_User': [],'Pin_Codes':[]}
     for i in Agg_user_list:
         p_i=path6+i+"/"
         Agg_yr=os.listdir(p_i)
@@ -197,17 +216,22 @@ def Top_User():
                 D6=json.load(Data)
                 try:
                     for z in D6['data']['districts']:
-                        DistrictName=z['name']
-                        UserCount=z['registeredUsers']
-                        Top_user_data['District'].append(DistrictName)
-                        Top_user_data['Registered_User'].append(UserCount)
-                        Top_user_data['State'].append(i)
-                        Top_user_data['Year'].append(j)
-                        Top_user_data['Quarter'].append(int(k.strip('.json')))
+                        for z1 in D6['data']['pincodes']:
+
+                            DistrictName=z['name']
+                            UserCount=z['registeredUsers']
+                            Pincode=z1['name']
+                            Top_user_data['District'].append(DistrictName)
+                            Top_user_data['Registered_User'].append(UserCount)
+                            Top_user_data['State'].append(i)
+                            Top_user_data['Year'].append(j)
+                            Top_user_data['Quarter'].append(int(k.strip('.json')))
+                            Top_user_data['Pin_Codes'].append(Pincode)
                 except:
                     pass
 
     T_User=pd.DataFrame(Top_user_data)
+    T_User['State'] = T_User['State'].replace(dict(zip(Agg_state_list, custom_state_list)))
     return T_User
 def Aggregate_Trans_Table():
     drop_query='''DROP TABLE IF EXISTS Agg_Trans'''
@@ -341,6 +365,7 @@ def Top_Trans_Table():
                                                            Year int,
                                                            Quarter varchar(255),
                                                            District varchar(255),
+                                                           Pin_Codes int,
                                                            Transaction_count int,
                                                            Transaction_amount float)'''
     mycur.execute(create_query)
@@ -350,22 +375,55 @@ def Top_Trans_Table():
                                                 Year,
                                                 Quarter,
                                                 District,
+                                                Pin_Codes,
                                                 Transaction_count,
                                                 Transaction_amount)
-                                                VALUES(%s,%s,%s,%s,%s,%s)'''
+                                                VALUES(%s,%s,%s,%s,%s,%s,%s)'''
         values = (row['State'],
                   row['Year'],
                   row['Quarter'],
                   row['District'],
+                  row['Pin_Codes'],
                   row['Transaction_count'],
                   row['Transaction_amount'])
         try:
             mycur.execute(insert_query, values)
             myconnection.commit()
         except:
-            print("Top_Trans values are already inserted")  
+            print("Top_Trans values are already inserted")   
+def Top_User_Table():
+    drop_query='''DROP TABLE IF EXISTS Top_User'''
+    mycur.execute(drop_query)
+    # myconnection.commit()
+    create_query = '''CREATE TABLE IF NOT EXISTS Top_User(State text,
+                                                          Year int,
+                                                          Quarter varchar(255),
+                                                          District varchar(255),
+                                                          Pin_Codes int, 
+                                                          Registered_User int)'''                                                     
+    mycur.execute(create_query)
+    df6 = Top_User()
+    for index, row in df6.iterrows():
+        insert_query = '''INSERT INTO Top_User( State,
+                                                Year,
+                                                Quarter,
+                                                District,
+                                                Pin_Codes,
+                                                Registered_User)
+                                                VALUES(%s,%s,%s,%s,%s,%s)'''
+        values = (row['State'],
+                  row['Year'],
+                  row['Quarter'],
+                  row['District'],
+                  row['Pin_Codes'],
+                  row['Registered_User'])
+        try:
+            mycur.execute(insert_query, values)
+            myconnection.commit()
+        except:
+            print("Top_User values are already inserted")  
 def state_list():
-    mycur.execute(f"""select distinct state from agg_trans order by state asc;""")
+    mycur.execute(f"""select distinct State from agg_trans order by State asc;""")
     data = mycur.fetchall()
     original_state = [i[0] for i in data]
     return original_state
@@ -387,7 +445,8 @@ def get_transaction_type():
 def get_agg_users():
     mycur.execute("SELECT * FROM phonepepulse.agg_user;")
     data = mycur.fetchall()
-    d = pd.DataFrame(data, columns=mycur.column_names)
+    columns = [col[0] for col in mycur.description]
+    d = pd.DataFrame(data, columns=columns)
     return d
 def agg_trans_avg(agg_trans):
     data = []
@@ -402,12 +461,20 @@ def new_frame(v):
 def get_map_transaction():
     mycur.execute("SELECT * FROM phonepepulse.map_trans;")
     data = mycur.fetchall()
-    d = pd.DataFrame(data, columns=mycur.column_names)
+    columns = [col[0] for col in mycur.description]
+    d = pd.DataFrame(data, columns=columns)
+    return d
+def get_top_trans():
+    mycur.execute("SELECT * FROM phonepepulse.top_trans;")
+    data = mycur.fetchall()
+    columns = [col[0] for col in mycur.description]
+    d = pd.DataFrame(data, columns=columns)
     return d
 def get_map_users():
     mycur.execute("SELECT * FROM phonepepulse.map_user;")
     data = mycur.fetchall()
-    d = pd.DataFrame(data, columns=mycur.column_names)
+    columns = [col[0] for col in mycur.description]
+    d = pd.DataFrame(data, columns=columns)
     return d
 def users_trans_avg(agg_trans):
     data = []
@@ -420,14 +487,14 @@ st.set_page_config(page_title= "Phonepe Pulse Data Visualization",
                    page_icon= icon,
                    layout= "wide",
                    initial_sidebar_state= "expanded")
-
+icon = Image.open("Icon.png")
 st.title(":violet[Phonepe Pulse Data Visualization]")
+st.header(":violet[Simple, Fast and Secure]")
 with st.sidebar:
-    st.header(":wave: :violet[**Hello! Welcome to the dashboard**]")
+    st.header(":violet[**Welcome to PhonePe Pulse Dashboard**]")
     india=Image.open("India_Map.jpeg")
     selected = option_menu(None,
-                            options=["Home","INDIA","Transactions-Insights","Users-Insights"],
-                            icons=["house","india", "cash-coin", "bi-people"],
+                            options=["Home","Statewise-Insights","Transactions-Insights","Users-Insights"],
                             default_index=0,
                             orientation="horizontal",
                             styles={"container": {"width": "90%"},
@@ -438,28 +505,27 @@ with st.sidebar:
     
     
 if selected == "Home":
-    im1 = Image.open("cover1.jpeg")
+    im1 = Image.open("PhonePe-Coverpage.jpeg")
+    im2 = Image.open("Icon.png")
     st.image(im1, width=1000)
-    st.header(":violet[📱PHONEPE]  _INDIA'S Most Trusted Payment Gateway_")
-    st.subheader("DOMAIN: :green[Fintech]")
-    st.subheader(":green[TECHNOLOGIES-USED]")
-    st.markdown("Github Cloning, Python, Pandas, MYSQL, Streamlit, and Plotly")
-    st.subheader("OVERVIEW")
-    st.markdown("PhonePe  is an Indian digital payments and financial technology company headquartered in Bengaluru, Karnataka, India. PhonePe was founded in December 2015, by Sameer Nigam, Rahul Chari and Burzin Engineer. The PhonePe app, based on the Unified Payments Interface (UPI), went live in August 2016. It is owned by Flipkart, a subsidiary of Walmart.")
+    st.image(im2)
+   
+    st.subheader("PhonePe is a mobile payment platform using which you can transfer money using UPI, recharge phone numbers, pay utility bills, etc. PhonePe works on the Unified Payment Interface (UPI) system and all you need is to feed in your bank account details and create a UPI ID.")
+    st.subheader(":Red[✨TECHNOLOGIES-USED]")
+    st.write("****🔶Github Cloning****")
+    st.write("****🔶Python****")
+    st.write("****🔶Pandas****")
+    st.write("****🔶MYSQL****")
+    st.write("****🔶Streamlit****")
+    st.write("****🔶Plotly****")    
 
-    st.write("****FEATURES****")
-    st.write("****✳Credit & Debit card linking****")
-    st.write("****✳Bank Balance check****")
-    st.write("****✳Money Storage****")
-    st.write("****✳PIN Authorization****")
-    st.download_button("DOWNLOAD THE APP NOW", "https://www.phonepe.com/app-download/")
-    
-if selected == "INDIA":
+if selected == "Statewise-Insights":
     MAP= st.selectbox("select your MAP",("Click to select","Total_transactions","Registered Users","App_opens"))
     def get_aggregated_user():
             mycur.execute( "SELECT * FROM phonepepulse.agg_trans;")
             data = mycur.fetchall()
-            df = pd.DataFrame(data, columns=mycur.column_names)
+            columns = [col[0] for col in mycur.description]
+            df = pd.DataFrame(data, columns=columns)
             return df
         
     
@@ -480,13 +546,13 @@ if selected == "INDIA":
     
     if MAP =="Registered Users":
         tot_user = get_map_users()
-        tot_user = tot_user.groupby(["State"])[["Registered_User", "App_opens"]].sum().reset_index()
+        tot_user = tot_user.groupby(["State"])[["Registered_user", "App_opens"]].sum().reset_index()
         data =state_list()
         fig = px.choropleth(tot_user,
                             geojson="https://gist.githubusercontent.com/jbrobst/56c13bbbf9d97d187fea01ca62ea5112/raw/e388c4cae20aa53cb5090210a42ebb9b765c0a36/india_states.geojson",
                             featureidkey='properties.ST_NM',
                             locations='State',
-                            color='Registered_User',
+                            color='Registered_user',
                             color_continuous_scale="Reds",
                             title="Registered Users state wise",
                                     height=1000, width=1200)
@@ -494,7 +560,7 @@ if selected == "INDIA":
         st.write(fig)
     if MAP=='App_opens':
         tot_user = get_map_users()
-        tot_user = tot_user.groupby(["State"])[["Registered_User", "App_opens"]].sum().reset_index()
+        tot_user = tot_user.groupby(["State"])["Registered_user", "App_opens"].sum().reset_index()
         fig = px.choropleth(tot_user,
                             geojson="https://gist.githubusercontent.com/jbrobst/56c13bbbf9d97d187fea01ca62ea5112/raw/e388c4cae20aa53cb5090210a42ebb9b765c0a36/india_states.geojson",
                             featureidkey='properties.ST_NM',
@@ -525,7 +591,8 @@ if selected == "Transactions-Insights":
         def get_aggregated_user():
             mycur.execute( "SELECT * FROM phonepepulse.agg_trans;")
             data = mycur.fetchall()
-            df = pd.DataFrame(data, columns=mycur.column_names)
+            columns = [col[0] for col in mycur.description]
+            df = pd.DataFrame(data, columns=columns)
             return df
         
         
@@ -598,14 +665,14 @@ if selected == "Transactions-Insights":
         st.table(c_df)
 
 
-        st.markdown("#### Top 10 postalcodes")
+        st.markdown("#### Top 10 Pin Codes")
         year_df_pc = st.selectbox(label="Select year for the postal code data", options=(2018, 2019, 2020, 2021, 2022, 2023), index=0)
-        st.markdown("#### Top 10 postalcodes for Transaction Count wise")
+        st.markdown("#### Top 10 Pin Codes for Transaction Count wise")
         df = get_top_trans()
-        df = df.groupby(["Year", "District_Pincode"])[["Transaction_count", "Transaction_amount"]].sum().reset_index()
+        df = df.groupby(["Year", "Pin_Codes"])[["Transaction_count", "Transaction_amount"]].sum().reset_index()
         k = df[df["Year"] == year_df_pc]
         c = k.sort_values(by=["Transaction_count"],ascending=False).head(10)
-        c = c[["Year", "District_Pincode", "Transaction_count"]]
+        c = c[["Year", "Pin_Codes", "Transaction_count"]]
         c_df = new_frame(c)
         st.table(c_df) 
         
@@ -660,13 +727,13 @@ if selected == "Users-Insights":
    
     tot_state = st.selectbox(label="Select a state",options=state_list(), index=10)
     tot_user = get_map_users()
-    tot_user = tot_user.groupby(["State", "Year",])[ ["Registered_User", "App_opens"]].sum().reset_index()
+    tot_user = tot_user.groupby(["State", "Year",])["Registered_user", "App_opens"].sum().reset_index()
     to = tot_user[tot_user["State"] == tot_state][1:]
     
     col1, col2 = st.columns(2)
 
     with col1:    
-        fig = px.bar(to, x='Year', y='Registered_User', width=500, color="Year",title="Year wise Registered Users")
+        fig = px.bar(to, x='Year', y='Registered_user', width=500, color="Year",title="Year wise Registered Users")
         st.write(fig)
 
     with col2:
@@ -679,15 +746,15 @@ if selected == "Users-Insights":
     to_df = new_frame(to)
     st.table(to_df)
 
-    st.markdown("#### Top 10 distircts")
+    st.markdown("#### Top 10 districts")
     year_df_d = st.selectbox(label="Select year for the district wise data", options=(2018, 2019, 2020, 2021, 2022, 2023), index=0)
         
-    st.markdown("#### Top 10 distircts for Registered_User")
+    st.markdown("#### Top 10 districts for Registered_user")
     df = get_map_users()
-    df = df.groupby(["Year", "District"])[["Registered_User", "App_opens"]].sum().reset_index()
+    df = df.groupby(["Year", "District_name"])[["Registered_user", "App_opens"]].sum().reset_index()
     k = df[df["Year"] == year_df_d]
-    c = k.sort_values(by=["Registered_User"],ascending=False).head(10)
-    c = c[["Year", "District", "Registered_User"]]
+    c = k.sort_values(by=["Registered_user"],ascending=False).head(10)
+    c = c[["Year", "District_name", "Registered_user"]]
     c_df = new_frame(c)
     st.table(c_df)
     
